@@ -1,6 +1,6 @@
 const { Anthropic } = require("@anthropic-ai/sdk");
 // const vscode = require("vscode");
-const { CodeboltDev: ClaudeDev } = require("./../CodeboltDev");
+const { CodeboltDev: ClaudeDev } = require("./../CodeboltCrmDev");
 const { ApiProvider } = require("../shared/api");
 const { ExtensionMessage } = require("../shared/ExtensionMessage");
 const { WebviewMessage } = require("../shared/WebviewMessage");
