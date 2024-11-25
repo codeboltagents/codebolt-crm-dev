@@ -19,68 +19,46 @@ const { findLast, findLastIndex, formatContentBlockToMarkdown } = require("./uti
 const { truncateHalfConversation } = require("./utils/context-management");
 const { extractTextFromFile } = require("./utils/extract-text");
 const { regexSearchFiles } = require("./utils/ripgrep");
-const { send_message_to_ui, ask_question, executeCommand,currentProjectPath } = require("./utils/codebolt-helper");
-
+const { send_message_to_ui, ask_question, executeCommand, currentProjectPath, sendNotification, getInstructionsForAgent, listCodeDefinitionNames, readFile, writeToFile, searchFiles } = require("./utils/codebolt-helper");
+const { getModuleDetailByName } = require('./modules/index')
 var cwd;// = '/Users/ravirawat/Desktop/codebolt/timer-application'
+var codebolt_instructions;
 const ApproveButtons = {
-    RETRY: "Retry",
-    PROCEED_ANYWAYS: "Proceed Anyways",
-    SAVE: "Save",
-    APPROVE: "Approve",
-    RUN_COMMAND: "Run Command",
-    RESUME_TASK: "Resume Task",
-    START_NEW_TASK: "Start New Task"
+	RETRY: "Retry",
+	PROCEED_ANYWAYS: "Proceed Anyways",
+	SAVE: "Save",
+	APPROVE: "Approve",
+	RUN_COMMAND: "Run Command",
+	RESUME_TASK: "Resume Task",
+	START_NEW_TASK: "Start New Task",
+	YES: "Yes"
+
 };
 const SYSTEM_PROMPT =
-	async () => `You are Codebolt Dev, a highly skilled software developer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
-===
-
-FRONTEND STRUCTURE
-
-- The React project is organized into modules. Each page is part of a specific module located in the \`frontend/src/modules/<ModuleName>/index.tsx\` file.
-- Pages located in the \`frontend/src/pages/<PageName>/index.tsx\` file.
-- Each module contains pages that fall under it and may use various components from their respective modules.
-- The page are rendered dynamically using the \`DynamicForm\` component, located in \`frontend/src/forms/DynamicForm/index.jsx\`.
-- Each page has its own \`config\` file in \`frontend/src/pages/<PageName>/config.js\`, defining the \`fields\` used by the module.
-- The \`fields\` object determines how the form fields are dynamically rendered in the \`DynamicForm\` component.
-- Example usage of the \`CrudModule\` component, which handles create and update forms:
-  \`\`\`jsx
-  <CrudModule
-      createForm={<DynamicForm fields={fields} />}
-      updateForm={<DynamicForm fields={fields} />}
-      config={config}
-  />
-  \`\`\`
-
-  - The \`CrudModule\` takes props such as \`createForm\`, \`updateForm\`, and \`config\`.
-  - There is also forms folder in \`frontend/src/forms/<FormName>.jsx/\`
+	async () => `You are Codebolt CRM Dev, a highly skilled software developer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
 ====
 
-
-BACKEND STRUCTURE
-
-- The backend is organized into several directories: \`src/routes\`, \`src/controllers\`, and \`src/models\`.
-- The \`routes\` directory contains route definitions that map to various endpoints in the application. Each file corresponds to a specific resource, handling incoming requests and routing them to the appropriate controller.
-- The \`controllers\` directory contains the business logic of the application. Each controller manages the interactions between the routes and the models, processing data and returning responses.
-- The \`models\` directory contains the data models representing the application's entities. These models are responsible for defining the structure of the data, including validation and database interaction.
-
-====
- 
 CAPABILITIES
 
 - You can read and analyze code in various programming languages, and can write clean, efficient, and well-documented code.
 - You can debug complex issues and providing detailed explanations, offering architectural insights and design patterns.
 - You have access to tools that let you execute CLI commands on the user's computer, list files in a directory (top level or recursively), extract source code definitions, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
 - When the user initially gives you a task, a recursive list of all filepaths in the current working directory ('${cwd}') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use search_files to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
+- You can use the project_summaries tool to obtain a summary of every file in the project. This tool provides concise overviews, helping you quickly understand the structure and purpose of each file. It is particularly useful for gaining insights into large codebases or unfamiliar projects.
+- You can use search_files only if you dont get c to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
+- Use search_files only if you could not get context using project_summaries
 - You can use the list_code_definition_names tool to get an overview of source code definitions for all files at the top level of a specified directory. This can be particularly useful when you need to understand the broader context and relationships between certain parts of the code. You may need to call this tool multiple times to understand various parts of the codebase related to the task.
-	- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file tool to implement changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
+- For example, when asked to make edits or improvements you might analyze the file structure in the initial environment_details to get an overview of the project, then use list_code_definition_names to get further insight using source code definitions for files located in relevant directories, then read_file to examine the contents of relevant files, analyze the code and suggest improvements or make necessary edits, then use the write_to_file tool to implement changes. If you refactored code that could affect other parts of the codebase, you could use search_files to ensure you update other files as needed.
 - The execute_command tool lets you run commands on the user's computer and should be used whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
+- **IMPORTANT:** If making changes in the frontend or backend that will affect the other, ensure to update both the frontend and backend accordingly to maintain consistency and functionality across the application.
 
 ====
 
 RULES
-
+- Preserve all existing import statements.
+- Do not remove, alter, or optimize any import lines.
+- Maintain the exact order of current imports.
+- If you need additional imports, add them at the end without modifying the existing ones.
 - Your current working project is: ${cwd}
 - The backend is using Node.js, MongoDB, and Mongoose.
 - The frontend is using React.
@@ -123,11 +101,25 @@ Default Shell:
 Home Directory: ${os.homedir()}
 Current Working Directory: ${cwd}
 `
-
-
 // vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
 
 const tools = [
+	{
+
+		name: "project_summaries",
+		description: "Acquire summaries of all project files for quick understanding. Focus on backend (Node.js, MongoDB, Mongoose) and frontend (React, Vite) specifics.",
+		input_schema: {
+			type: "object",
+			properties: {
+				project_name: {
+					type: "string",
+					description: "Specify 'frontend' or 'backend' to get summaries of the respective project files.",
+				},
+			},
+			required: ["project_name"],
+		},
+
+	},
 	{
 		name: "execute_command",
 		description: `Execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: ${cwd}`,
@@ -307,7 +299,7 @@ class CodeboltDev {
 		} else if (task || images) {
 			this.taskId = Date.now().toString();
 			// console.log(task)
-			this.startTask(task, images,response);
+			this.startTask(task, images, response);
 		} else {
 			console.log("Either historyItem or task/images must be provided")
 			throw new Error("Either historyItem or task/images must be provided");
@@ -326,7 +318,7 @@ class CodeboltDev {
 		this.alwaysAllowReadOnly = alwaysAllowReadOnly ?? false
 	}
 
-	async handleWebviewAskResponse(askResponse,text,images) {
+	async handleWebviewAskResponse(askResponse, text, images) {
 		this.askResponse = askResponse
 		this.askResponseText = text
 		this.askResponseImages = images
@@ -443,13 +435,13 @@ class CodeboltDev {
 		this.lastMessageTs = askTs
 		await this.addToClaudeMessages({ ts: askTs, type: "ask", ask: type, text: question })
 		// await this.providerRef.deref()?.postStateToWebview()
-		let codeboltAskReaponse = await ask_question(question,type);
+		let codeboltAskReaponse = await ask_question(question, type);
 		if (codeboltAskReaponse.type === "confirmationResponse") {
-             this.handleWebviewAskResponse(codeboltAskReaponse.message.userMessage,undefined,[])
+			this.handleWebviewAskResponse(codeboltAskReaponse.message.userMessage, undefined, [])
 		}
 		else {
 			codeboltAskReaponse.type === "feedbackResponse"
-			this.handleWebviewAskResponse("messageResponse",codeboltAskReaponse.message.userMessage,[])
+			this.handleWebviewAskResponse("messageResponse", codeboltAskReaponse.message.userMessage, [])
 		}
 		// await pWaitFor(() => this.askResponse !== undefined || this.lastMessageTs !== askTs, { interval: 100 })
 		if (this.lastMessageTs !== askTs) {
@@ -470,7 +462,7 @@ class CodeboltDev {
 		return result
 	}
 
-	async say(type, text, images,isUserMessage=false) {
+	async say(type, text, images, isUserMessage = false) {
 		if (this.abort) {
 			throw new Error("ClaudeDev instance aborted")
 		}
@@ -478,19 +470,20 @@ class CodeboltDev {
 		this.lastMessageTs = sayTs
 		await this.addToClaudeMessages({ ts: sayTs, type: "say", say: type, text: text, images })
 		// await this.providerRef.deref()?.postStateToWebview()
-		if (type == "text" || type == "error" || type=="tool" || type=="command")
-			if(text!="" && !isUserMessage)
-			send_message_to_ui(text,type);
+		if (type == "text" || type == "error" || type == "tool" || type == "command")
+			if (text != "" && !isUserMessage)
+				send_message_to_ui(text, type);
 	}
 
-	async startTask(task, images,response) {
+	async startTask(task, images, response) {
 		// conversationHistory (for API) and claudeMessages (for webview) need to be in sync
 		// if the extension process were killed, then on restart the claudeMessages might not be empty, so we need to set it to [] when we create a new ClaudeDev client (otherwise webview would show stale messages from previous session)
 		this.claudeMessages = []
 		this.apiConversationHistory = []
 		await this.providerRef.deref()?.postStateToWebview()
-        cwd= await currentProjectPath();
-		await this.say("text", task, images,true)
+		cwd = await currentProjectPath();
+		// codebolt_instructions = await getInstructionsForAgent();
+		await this.say("text", task, images, true)
 
 		let imageBlocks = this.formatImagesIntoBlocks(images)
 		await this.initiateTaskLoop([
@@ -500,7 +493,6 @@ class CodeboltDev {
 			},
 			...imageBlocks,
 		])
-
 		response("ok")
 	}
 
@@ -727,17 +719,19 @@ class CodeboltDev {
 	async executeTool(toolName, toolInput) {
 		switch (toolName) {
 			case "write_to_file":
-				return this.writeToFile(toolInput.path, toolInput.content)
+				return writeToFile(toolInput.path, toolInput.content)
 			case "read_file":
-				return this.readFile(toolInput.path)
+				return readFile(toolInput.path)
 			case "list_files":
-				return this.listFiles(toolInput.path, toolInput.recursive)
+				return listFiles(toolInput.path, toolInput.recursive)
 			case "list_code_definition_names":
-				return this.listCodeDefinitionNames(toolInput.path)
+				return listCodeDefinitionNames(toolInput.path)
 			case "search_files":
-				return this.searchFiles(toolInput.path, toolInput.regex, toolInput.filePattern)
+				return searchFiles(toolInput.path, toolInput.regex, toolInput.filePattern)
 			case "execute_command":
-				return this.executeCommand(toolInput.command)
+				return executeCommand(toolInput.command)
+			case "project_summaries":
+				return getModuleDetailByName(toolInput.project_name)
 			case "ask_followup_question":
 				return this.askFollowupQuestion(toolInput.question)
 			case "attempt_completion":
@@ -770,7 +764,7 @@ class CodeboltDev {
 	}
 
 	// return is [didUserRejectTool, ToolResponse]
-	async writeToFile(relPath, newContent) {
+	async _writeToFile(relPath, newContent) {
 		if (relPath === undefined) {
 			this.consecutiveMistakeCount++
 			return [false, await this.sayAndCreateMissingParamError("write_to_file", "path")]
@@ -873,7 +867,7 @@ class CodeboltDev {
 			// 	.map((tg) => tg.tabs)
 			// 	.flat()
 			// 	.filter((tab) => tab.input instanceof vscode.TabInputText && tab.input.uri.fsPath === absolutePath)
-			
+
 			// 	for (const tab of tabs) {
 			// 	await vscode.window.tabGroups.close(tab)
 			// 	console.log(`Closed tab for ${absolutePath}`)
@@ -1105,7 +1099,7 @@ class CodeboltDev {
 			// }
 			return [false, await this.formatToolResult(`The content was successfully saved to ${relPath}.`)]
 		} catch (error) {
-			
+
 			const { serializeError } = await import("serialize-error");
 			const errorString = `Error writing file: ${JSON.stringify(serializeError(error))}`
 			await this.say(
@@ -1185,7 +1179,7 @@ class CodeboltDev {
 		}
 	}
 
-	async readFile(relPath) {
+	async _readFile(relPath) {
 		if (relPath === undefined) {
 			this.consecutiveMistakeCount++
 			return [false, await this.sayAndCreateMissingParamError("read_file", "path")]
@@ -1218,9 +1212,9 @@ class CodeboltDev {
 
 			return [false, content]
 		} catch (error) {
-			
+
 			const { serializeError } = await import("serialize-error");
-			
+
 			const errorString = `Error reading file: ${JSON.stringify(serializeError(error))}`
 			await this.say(
 				"error",
@@ -1327,7 +1321,7 @@ class CodeboltDev {
 			})
 		if (sorted.length >= LIST_FILES_LIMIT) {
 			const truncatedList = sorted.slice(0, LIST_FILES_LIMIT).join("\n")
-			return `${truncatedList}\n\n(Truncated at ${LIST_FILES_LIMIT} results. Try listing files in subdirectories if you need to explore further.)`
+			return `${truncatedList}\n\n(Truncated at ${LIST_FILES_LIMIT} results. Try project_summaries  if you need to get full detail of every file in  backend or frontend.)`
 		} else if (sorted.length === 0 || (sorted.length === 1 && sorted[0] === "")) {
 			return "No files found or you do not have permission to view this directory."
 		} else {
@@ -1335,7 +1329,7 @@ class CodeboltDev {
 		}
 	}
 
-	async listCodeDefinitionNames(relDirPath) {
+	async _listCodeDefinitionNames(relDirPath) {
 		if (relDirPath === undefined) {
 			this.consecutiveMistakeCount++
 			return [false, await this.sayAndCreateMissingParamError("list_code_definition_names", "path")]
@@ -1368,7 +1362,7 @@ class CodeboltDev {
 
 			return [false, await this.formatToolResult(result)]
 		} catch (error) {
-			
+
 			const { serializeError } = await import("serialize-error");
 
 			const errorString = `Error parsing source code definitions: ${JSON.stringify(serializeError(error))}`
@@ -1381,7 +1375,7 @@ class CodeboltDev {
 		}
 	}
 
-	async searchFiles(relDirPath, regex, filePattern) {
+	async _searchFiles(relDirPath, regex, filePattern) {
 		if (relDirPath === undefined) {
 			this.consecutiveMistakeCount++
 			return [false, await this.sayAndCreateMissingParamError("search_files", "path")]
@@ -1421,7 +1415,7 @@ class CodeboltDev {
 
 			return [false, await this.formatToolResult(results)]
 		} catch (error) {
-			
+
 			const { serializeError } = await import("serialize-error");
 
 			const errorString = `Error searching files: ${JSON.stringify(serializeError(error))}`
@@ -1433,8 +1427,8 @@ class CodeboltDev {
 		}
 	}
 
-	
-	async executeCommand(
+
+	async _executeCommand(
 		command,
 		returnEmptyStringOnSuccess = false
 	) {
@@ -1453,8 +1447,12 @@ class CodeboltDev {
 		}
 
 		try {
-		
-			let {result} = await executeCommand(command)
+
+
+			sendNotification('console', "Executing Command: View Logs")
+			let { result, type } = await executeCommand(command);
+			console.log("command output is");
+
 			let completed = true
 
 			let userFeedback;
@@ -1507,8 +1505,8 @@ class CodeboltDev {
 			// for their associated messages to be sent to the webview, maintaining
 			// the correct order of messages (although the webview is smart about
 			// grouping command_output messages despite any gaps anyways)
-			const delay = (await import("delay")).default;
-			await delay(50)
+			// const delay = (await import("delay")).default;
+			// await delay(50)
 
 			result = result.trim()
 
@@ -1517,8 +1515,7 @@ class CodeboltDev {
 				return [
 					true,
 					this.formatToolResponseWithImages(
-						`Command is still running in the user's terminal.${
-							result.length > 0 ? `\nHere's the output so far:\n${result}` : ""
+						`Command is still running in the user's terminal.${result.length > 0 ? `\nHere's the output so far:\n${result}` : ""
 						}\n\nThe user provided the following feedback:\n<feedback>\n${userFeedback.text}\n</feedback>`,
 						userFeedback.images
 					),
@@ -1527,7 +1524,8 @@ class CodeboltDev {
 
 			// for attemptCompletion, we don't want to return the command output
 			if (returnEmptyStringOnSuccess) {
-				return [false, ""]
+
+				return [false, type === "commandError" ? result : ""]
 			}
 			if (completed) {
 				return [
@@ -1538,14 +1536,13 @@ class CodeboltDev {
 				return [
 					false,
 					await this.formatToolResult(
-						`Command is still running in the user's terminal.${
-							result.length > 0 ? `\nHere's the output so far:\n${result}` : ""
+						`Command is still running in the user's terminal.${result.length > 0 ? `\nHere's the output so far:\n${result}` : ""
 						}\n\nYou will be updated on the terminal status and new output in the future.`
 					),
 				]
 			}
 		} catch (error) {
-			
+
 			const { serializeError } = await import("serialize-error");
 
 			let errorMessage = error.message || JSON.stringify(serializeError(error), null, 2)
@@ -1574,20 +1571,20 @@ class CodeboltDev {
 		}
 		this.consecutiveMistakeCount = 0
 		let resultToSend = result
-		if (command) {
-			await this.say("completion_result", resultToSend)
-			// TODO: currently we don't handle if this command fails, it could be useful to let claude know and retry
-			const [didUserReject, commandResult] = await this.executeCommand(command, true)
-			// if we received non-empty string, the command was rejected or failed
-			if (commandResult) {
-				return [didUserReject, commandResult]
-			}
-			resultToSend = ""
-		}
-		
+		// if (command) {
+		// 	await this.say("completion_result", resultToSend)
+		// 	// TODO: currently we don't handle if this command fails, it could be useful to let claude know and retry
+		// 	const [didUserReject, commandResult] = await executeCommand(command, true)
+		// 	// if we received non-empty string, the command was rejected or failed
+		// 	if (commandResult) {
+		// 		return [didUserReject, commandResult]
+		// 	}
+		// 	resultToSend = ""
+		// }
+
 		// const { response, text, images } = await this.ask("completion_result", resultToSend) // this prompts webview to show 'new task' button, and enable text input (which would be the 'text' here)
 		// if (!Object.values(ApproveButtons).includes(response)) {
-			return [false, ""] // signals to recursive loop to stop (for now this never happens since yesButtonTapped will trigger a new task)
+		return [false, ""] // signals to recursive loop to stop (for now this never happens since yesButtonTapped will trigger a new task)
 		// }
 		await this.say("user_feedback", text ?? "", images)
 		return [
@@ -1637,7 +1634,7 @@ ${this.customInstructions.trim()}
 					await this.overwriteApiConversationHistory(truncatedMessages)
 				}
 			}
-		
+
 			const { message, userCredits } = await this.api.createMessage(
 				systemPrompt,
 				this.apiConversationHistory,
@@ -1651,8 +1648,9 @@ ${this.customInstructions.trim()}
 			}
 			return message
 		} catch (error) {
+			console.log(error);
 			const { serializeError } = await import("serialize-error");
-			
+
 			const { response } = await this.ask(
 				"api_req_failed",
 				error.message ?? JSON.stringify(serializeError(error), null, 2)
@@ -1679,7 +1677,7 @@ ${this.customInstructions.trim()}
 				"mistake_limit_reached",
 				this.api.getModel().id.includes("claude")
 					? `This may indicate a failure in his thought process or inability to use a tool properly, which can be mitigated with some user guidance (e.g. "Try breaking down the task into smaller steps").`
-					: "Claude Dev uses complex prompts and iterative task execution that may be challenging for less capable models. For best results, it's recommended to use Claude 3.5 Sonnet for its advanced agentic coding capabilities."
+					: "Codebolt Dev uses complex prompts and iterative task execution that may be challenging for less capable models. For best results, it's recommended to use Claude 3.5 Sonnet for its advanced agentic coding capabilities."
 			)
 			if (response === "messageResponse") {
 				userContent.push(
@@ -1697,6 +1695,8 @@ ${this.customInstructions.trim()}
 
 		// getting verbose details is an expensive operation, it uses globby to top-down build file structure of project which for large projects can take a few seconds
 		// for the best UX we show a placeholder api_req_started message with a loading spinner as this happens
+		// sendNotification('debug',"Sending Request To AI ...: View Logs")
+
 		await this.say(
 			"api_req_started",
 			JSON.stringify({
@@ -1726,7 +1726,10 @@ ${this.customInstructions.trim()}
 		await this.providerRef.deref()?.postStateToWebview()
 
 		try {
-			const response = await this.attemptApiRequest()
+			const response = await this.attemptApiRequest();
+
+			console.log(response)
+
 
 			if (this.abort) {
 				throw new Error("ClaudeDev instance aborted")
@@ -1751,14 +1754,14 @@ ${this.customInstructions.trim()}
 					tokensOut: outputTokens,
 					cacheWrites: cacheCreationInputTokens,
 					cacheReads: cacheReadInputTokens,
-					cost:
-						totalCost ||
-						this.calculateApiCost(
-							inputTokens,
-							outputTokens,
-							cacheCreationInputTokens,
-							cacheReadInputTokens
-						),
+					// cost:
+					// 	totalCost 
+					// this.calculateApiCost(
+					// 	inputTokens,
+					// 	outputTokens,
+					// 	cacheCreationInputTokens,
+					// 	cacheReadInputTokens
+					// ),
 				})
 			)
 
@@ -2019,7 +2022,7 @@ ${this.customInstructions.trim()}
 			const files = await listFiles(cwd, !isDesktop)
 			const result = this.formatFilesList(cwd, files)
 			details += `\n\n# Current Working Directory (${cwd}) Files\n${result}${isDesktop
-				? "\n(Note: Only top-level contents shown for Desktop by default. Use list_files to explore further if necessary.)"
+				? "\n(Note: Only top-level contents shown for Desktop by default. Use project_summaries to explore further if necessary about frontend or backend.)"
 				: ""
 				}`
 		}

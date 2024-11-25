@@ -1,5 +1,7 @@
 const codebolt = require('@codebolt/codeboltjs').default
 let projectPath;
+const fs = require('fs').promises;
+const path = require('path');
 /**
  * Sends a message to the user interface.
  * @param {string} message - The message to be sent to the UI.
@@ -57,13 +59,9 @@ async function send_message_to_ui(message, type) {
     await send_message(agentMessage, paylod)
 }
 async function ask_question(question, type) {
-    let buttons = [{
-        text: "Yes",
-        value: "yesButtonTapped"
-    }, {
-        text: "No",
-        value: "noButtonTapped"
-    }];
+    console.log("question is",question,type)
+    try {
+        let buttons = [];
     let paylod = {
         type: "",
         path: "",
@@ -71,12 +69,18 @@ async function ask_question(question, type) {
     }
     let agentMessage = ""
     function setPrimaryButtonText(text) {
-        buttons[0].text = text
-        buttons[0].value = text
+        if (text === undefined) {
+           
+        }
+        else {
+            buttons[0].text = text
+            buttons[0].value = text
+        }
+
     }
     function setSecondaryButtonText(text) {
         if (text === undefined) {
-            buttons.splice(1, 1); // Remove the second button from the array
+           
         }
         else {
             buttons[1].value = text
@@ -94,8 +98,8 @@ async function ask_question(question, type) {
             setSecondaryButtonText("Start New Task")
             break
         case "followup":
-            // setPrimaryButtonText(undefined)
-            // setSecondaryButtonText(undefined)
+            setPrimaryButtonText(undefined)
+            setSecondaryButtonText(undefined)
             break
         case "tool":
             const tool = JSON.parse(question || "{}")
@@ -224,10 +228,15 @@ async function ask_question(question, type) {
             break
     }
     // console.log("sending message ", question, buttons)
-    const response = await codebolt.chat.sendConfirmationRequest(question, buttons,true);
-    // console.log(message.userMessage);
-
+    const response = await codebolt.chat.sendConfirmationRequest(question, buttons, true);
+    
+    console.log("codebolt confirmation response", response);
     return response
+    } catch (error) {
+        
+    }
+  
+    
 
 }
 async function send_message(message, paylod) {
@@ -236,9 +245,70 @@ async function send_message(message, paylod) {
 }
 
 
-async function executeCommand(command) {
-    const response = await codebolt.terminal.executeCommand(command);
-    return response
+async function readFile(filePath) {
+    try {
+        let { success, result } = await codebolt.fs.readFile(filePath);
+        console.log("response", success, result)
+        return [success, result]
+    } catch (error) {
+        console.error(`Failed to read file at ${filePath}:`, error);
+        throw error;
+    }
+}
+
+async function writeToFile(filePath, content) {
+    try {
+        let { success, result } = await codebolt.fs.writeToFile(filePath, content);
+        console.log("response", success, result)
+        return [success, result]
+
+    } catch (error) {
+        console.error(`Failed to write to file at ${filePath}:`, error);
+        throw error;
+    }
+}
+
+async function listFiles(directoryPath, recursive = false) {
+    try {
+      let { success, result } = await codebolt.fs.listFile(directoryPath, recursive);
+        return [success, result]
+    } catch (error) {
+        console.error(`Failed to list files in directory ${directoryPath}:`, error);
+        throw error;
+    }
+}
+
+async function listCodeDefinitionNames(filePath) {
+    try {
+        let  { success, result } = await codebolt.fs.listCodeDefinitionNames(filePath);
+        return [success, result]
+    } catch (error) {
+        console.error(`Failed to list code definitions in file ${filePath}:`, error);
+        throw error;
+    }
+}
+
+async function searchFiles(directoryPath, regex, filePattern) {
+    try {
+        let { success, result } =  await codebolt.fs.searchFiles(directoryPath, regex, filePattern);
+        return [success, result]
+    } catch (error) {
+        console.error(`Failed to search files in directory ${directoryPath}:`, error);
+        throw error;
+    }
+}
+
+
+
+async function sendNotification(type, message) {
+    codebolt.chat.sendNotificationEvent(message, type)
+
+}
+
+
+async function executeCommand(command,returnEmptyStringOnSuccess) {
+    let  { success, result } =  await codebolt.terminal.executeCommand(command,returnEmptyStringOnSuccess);
+    return [success, result]
 }
 
 /**
@@ -281,17 +351,46 @@ async function currentProjectPath() {
         // For example, you might want to throw an error or return a default value
         let { projectPath } = await codebolt.project.getProjectPath();
         console.log(projectPath)
-        currentProjectPath = projectPath
-        return currentProjectPath
+        let _currentProjectPath = projectPath
+        return _currentProjectPath
 
+    }
+}
+async function getInstructionsForAgent() {
+
+    if (projectPath) {
+        const filePath = path.join(projectPath, 'codebltInstruction.md');
+        try {
+            const fileContent = await fs.readFile(filePath, 'utf-8');
+            return fileContent;
+        } catch (error) {
+            console.error('Error reading codebltInstruction.md:', error);
+            return '';
+        }
+    } else {
+        let projectPath = await currentProjectPath();
+        const filePath = path.join(projectPath, 'codebltInstruction.md');
+        try {
+            const fileContent = await fs.readFile(filePath, 'utf-8');
+            return fileContent;
+        } catch (error) {
+            console.error('Error reading codebltInstruction.md:', error);
+            return '';
+        }
     }
 }
 module.exports = {
     send_message_to_ui,
     send_message_to_llm,
-
+    getInstructionsForAgent,
     get_default_llm,
     ask_question,
     executeCommand,
-    currentProjectPath
+    currentProjectPath,
+    sendNotification,
+    writeToFile,
+    readFile,
+    listFiles,
+    searchFiles,
+    listCodeDefinitionNames
 }

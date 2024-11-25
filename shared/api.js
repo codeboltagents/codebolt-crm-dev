@@ -1,4 +1,4 @@
-const ApiProvider = [
+ const ApiProvider = [
 	"anthropic",
 	"openrouter",
 	"bedrock",
@@ -301,5 +301,7 @@ module.exports={
 	openAiNativeDefaultModelId,
 	openAiNativeDefaultModelId,
 	openRouterModels,
-	openRouterDefaultModelId
+	openRouterDefaultModelId,
+	anthropicDefaultModelId,
+	anthropicModels
 }
