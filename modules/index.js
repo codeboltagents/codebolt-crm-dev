@@ -271,7 +271,7 @@ function getModuleDetailByName(moduleName) {
         - InvoiceRecordPayment.jsx: "Loads RecordPaymentModule with specific configurations."
         - InvoiceUpdate.jsx:"Loads UpdateInvoiceModule with specific configurations."
         - index.jsx: "Displays a table of invoices with columns such as Number, Client, Date, Expiry Date, Total, Paid, Status, and Payment."
-      - Login.jsx: "User login page."
+      - Login.jsx: "User login page. "
       - Logout.jsx: "User logout page."
       - NotFound.jsx: "Page displayed when a route is not found."
       - **Payment**
@@ -338,8 +338,8 @@ function getModuleDetailByName(moduleName) {
       - request.js
       - successHandler.js
     - **router**
-      - AppRouter.jsx
-      - AuthRouter.jsx
+      - AppRouter.jsx: "Main router for the application."
+      - AuthRouter.jsx: "Handles authentication-related routes such as login, logout, forgot password, and reset password. Note: Ensure to add the user registration route here and also in AppRouter.jsx."
       - routes.jsx
     - **settings**
       - index.jsx
@@ -399,13 +399,13 @@ function getModuleDetailByName(moduleName) {
   - **controllers**
     - **appControllers**
       - **clientController**
-        - index.js :"Defines a CRUD controller for the "Client" model with a custom summary method."
-        - summary.js :"Provides a summary of client data (new, active, and total clients) within a specified time frame (week, month, or year), including percentage metrics, using MongoDB aggregation."
+        - index.js: "Defines a CRUD controller for the "Client" model with a custom summary method."
+        - summary.js: "Provides a summary of client data (new, active, and total clients) within a specified time frame (week, month, or year), including percentage metrics, using MongoDB aggregation."
       - index.js: "Dynamically loads custom and default CRUD controllers for app models based on directory structure and a routes list, combining them into a unified controller object."
       - **invoiceController**
-        - create.js :"Creates an invoice by validating input, calculating totals, setting payment status, saving it, updating with a PDF ID, and responding with success or error."
-        - index.js : "Exports a set of CRUD methods for managing invoices, including mail, create, update, delete, summary, list, and read functionalities."
-        - paginatedList.js :"This function fetches a paginated list of invoices from the database, applying optional filters, sorting, and searching, and returns the results along with pagination details."
+        - create.js: "Creates an invoice by validating input, calculating totals, setting payment status, saving it, updating with a PDF ID, and responding with success or error."
+        - index.js: "Exports a set of CRUD methods for managing invoices, including mail, create, update, delete, summary, list, and read functionalities."
+        - paginatedList.js: "This function fetches a paginated list of invoices from the database, applying optional filters, sorting, and searching, and returns the results along with pagination details."
         - read.js:"This function retrieves an invoice by its ID from the database, ensuring it is not marked as removed, and returns the document along with a success or error message."
         - remove.js : "This function marks an invoice as removed by updating its \`removed\` status to \`true\` and also updates related payments to be marked as removed, returning a success or error message."
         - schemaValidate.js : "This code defines a Joi schema for validating invoice data, ensuring required fields, types, and specific conditions (e.g., array cannot be empty). It validates fields such as \`client\`, \`number\`, \`year\`, \`status\`, \`notes\`, \`expiredDate\`, \`date\`, \`items\` (an array of objects with specific fields), and \`taxRate\`."
