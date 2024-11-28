@@ -56,8 +56,8 @@ CAPABILITIES
 
 RULES
 
-- You are  allowed to use any external libraries or packages that are not already installed.
-
+- You are allowed to use any external libraries or packages that are not already installed.
+- **CRITICAL:** Before using any package, ensure it is installed. If a package is not installed, use the execute_command tool to install it using npm or another appropriate package manager.
 - Your current working project is: ${cwd}
 - You cannot \`cd\` into a different directory to complete a task. You are stuck operating from '${cwd}', so be sure to pass in the correct 'path' parameter when using tools that require a path.
 - Do not use the ~ character or $HOME to refer to the home directory.
