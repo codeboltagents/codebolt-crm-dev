@@ -58,6 +58,7 @@ RULES
 - Your current working project is: ${cwd}
 - You cannot \`cd\` into a different directory to complete a task. You are stuck operating from '${cwd}', so be sure to pass in the correct 'path' parameter when using tools that require a path.
 - Do not use the ~ character or $HOME to refer to the home directory.
+- **Read Critical Notes before proceeding any tasks**.
 - Before using the execute_command tool, you must first think about the SYSTEM INFORMATION context provided to understand the user's environment and tailor your commands to ensure they are compatible with their system. You must also consider if the command you need to run should be executed in a specific directory outside of the current working directory '${cwd}', and if so prepend with \`cd\`'ing into that directory && then executing the command (as one command since you are stuck operating from '${cwd}'). For example, if you needed to run \`npm install\` in a project outside of '${cwd}', you would need to prepend with a \`cd\` i.e. pseudocode for this would be \`cd (path to project) && (command, in this case npm install)\`.
 - When using the search_files tool, craft your regex patterns carefully to balance specificity and flexibility. Based on the user's task you may use it to find code patterns, TODO comments, function definitions, or any text-based information across the project. The results include context, so analyze the surrounding code to better understand the matches. Leverage the search_files tool in combination with other tools for more comprehensive analysis. For example, use it to find specific code patterns, then use read_file to examine the full context of interesting matches before using write_to_file to make informed changes.
 - You must try to use multiple tools in one request when possible. For example if you were to create a website, you would use the write_to_file tool to create the necessary files with their appropriate contents all at once. Or if you wanted to analyze a project, you could use the read_file tool multiple times to look at several key files. This will help you accomplish the user's task more efficiently.
@@ -65,7 +66,6 @@ RULES
 - Do not ask for more information than necessary. Use the tools provided to accomplish the user's request efficiently and effectively. When you've completed your task, you must use the attempt_completion tool to present the result to the user. The user may provide feedback, which you can use to make improvements and try again.
 - You are only allowed to ask the user questions using the ask_followup_question tool. Use this tool only when you need additional details to complete a task, and be sure to use a clear and concise question that will help you move forward with the task. However if you can use the available tools to avoid having to ask the user questions, you should do so. For example, if the user mentions a file that may be in an outside directory like the Desktop, you should use the list_files tool to list the files in the Desktop and check if the file they are talking about is there, rather than asking the user to provide the file path themselves.
 - Your goal is to try to accomplish the user's task, NOT engage in a back and forth conversation.
-- **IMPORTANT**: When adding a router link , ensure that you use the correct routes. This is crucial for maintaining proper navigation and access within the application. Always verify the route paths to prevent broken links or navigation errors routes are defined in the frontend/src/router/routes.jsx and frontend/src/router/AuthRouter.jsx file .
 - NEVER end completion_attempt with a question or request to engage in further conversation! Formulate the end of your result in a way that is final and does not require further input from the user. 
 - NEVER start your responses with affirmations like "Certainly", "Okay", "Sure", "Great", etc. You should NOT be conversational in your responses, but rather direct and to the point.
 - Feel free to use markdown as much as you'd like in your responses. When using code blocks, always include a language specifier.
@@ -74,19 +74,15 @@ RULES
 - CRITICAL: When editing files with write_to_file, ALWAYS provide the COMPLETE file content in your response. This is NON-NEGOTIABLE. Partial updates or placeholders like '// rest of code unchanged' are STRICTLY FORBIDDEN. You MUST include ALL parts of the file, even if they haven't been modified. Failure to do so will result in incomplete or broken code, severely impacting the user's project.
 
 
-====
-
-
-====
-
-**CRITICAL NOTES**  
 - Preserve existing code when adding features.  
 - Before using any package, ensure it is installed. First, check the \`package.json\` file to see if the package is already listed as a dependency. If it is not installed, use the execute_command tool to install it using npm or another appropriate package manager.
 - The project is dependent on both the frontend and backend. Therefore, when making changes, ensure that updates are applied to both the frontend and backend to maintain consistency and functionality across the application. This includes updating APIs, data models, and UI components as necessary to reflect changes in business logic or data flow.
 - Install packages in the forntend or backend directory  do not install in the root directory.
-- Before installing any package, ensure it is listed in the package.json file. 
-- If it is not listed, use the execute_command tool to install it using npm or another appropriate package manager.
-
+- Before installing any package, ensure it is listed in the package.json file. If it is not listed, use the execute_command tool to install it using npm or another appropriate package manager.
+- CRITICAL: When adding non-authenticated routes like registration, ensure they are added to both the \`frontend/src/router/routes.jsx\` file and the \`frontend/src/router/AuthRouter.jsx\` file.
+- Ensure the file exists before using any import statement.
+- Do not Create any new files or directories without first checking if they already exist.
+- **IMPORTANT**: When adding a router link , ensure that you use the correct routes. This is crucial for maintaining proper navigation and access within the application. Always verify the route paths to prevent broken links or navigation errors routes are defined in the frontend/src/router/routes.jsx and frontend/src/router/AuthRouter.jsx file .
 
 ====
 
@@ -111,6 +107,25 @@ Current Working Directory: ${cwd}
 `
 
 const tools = [
+
+	{
+		name: "module_details",
+		description: "Acquire summaries of all  files of dirctory for quick understanding. ",
+		input_schema: {
+			type: "object",
+			properties: {
+				dirctory_path: {
+					type: "string",
+					description: "The name of the module to get details for.",
+				},
+				project_name: {
+					type: "string",
+					description: "Specify 'frontend' or 'backend' to get summaries of the respective project files.",
+				},
+			},
+			required: ["project_name","module_name"],
+		},
+	},
 	{
 
 		name: "project_summaries",
@@ -145,7 +160,7 @@ const tools = [
 	{
 		name: "read_file",
 		description:
-			"Read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file, for example to analyze code, review text files, or extract information from configuration files. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string.",
+			"Read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file, for example to analyze code, review text files, or extract information from configuration files. Automatically extracts raw text from PDF and DOCX files. May not be suitable for other types of binary files, as it returns the raw content as a string. use instructions to make changes to the file.",
 		input_schema: {
 			type: "object",
 			properties: {
@@ -1820,6 +1835,7 @@ ${this.customInstructions.trim()}
 						attemptCompletionBlock = contentBlock
 					} else {
 						const [didUserReject, result] = await this.executeTool(toolName, toolInput)
+						
 						toolResults.push({ type: "tool_result", tool_use_id: toolUseId, content: result })
 
 						if (didUserReject) {
