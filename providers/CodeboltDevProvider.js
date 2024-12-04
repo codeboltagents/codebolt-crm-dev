@@ -1,6 +1,6 @@
 const { Anthropic } = require("@anthropic-ai/sdk");
 // const vscode = require("vscode");
-const { CodeboltDev: ClaudeDev } = require("./../CodeboltCrmDev");
+const { CodeboltDev: ClaudeDev } = require("./../CodeboltDev");
 const { ApiProvider } = require("../shared/api");
 const { ExtensionMessage } = require("../shared/ExtensionMessage");
 const { WebviewMessage } = require("../shared/WebviewMessage");
@@ -189,6 +189,8 @@ class CodeboltDevProvider {
 		await this.clearTask() // ensures that an exising task doesn't exist before starting a new one, although this shouldn't be possible since user must clear task before starting a new one
 		const { apiConfiguration, customInstructions, alwaysAllowReadOnly } = await this.getState()
 		let provider = await get_default_llm();
+		console.log("provider is ",provider)
+
 		if (provider == null) {
 			send_message_to_ui("no llm setting found")
 		}

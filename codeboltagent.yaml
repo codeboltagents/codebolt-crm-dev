@@ -1,12 +1,13 @@
-title: CodeBolt CRM DEV
-unique_id: codebolt_crm
-initial_message: Codebolt CRM Dev, is a highly skilled software developer with extensive knowledge in CRM, customer management, and best practices
-description:  Codebolt CRM, is  a highly skilled software developer with extensive knowledge in CRM, customer management, and best practices.
+title: CodeBolt Crm  Devloper
+version: 1.0.8
+unique_id: codebolt_crm_devoper
+initial_message: Codebolt Crm Developer, is a highly skilled software developer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices
+description:  Codebolt Dev, is  a highly skilled software developer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
 tags:
-  - crm
-  - customer-management
+  - web
+  - code-generation
 longDescription: |
-  A CRM agent designed for the Codebolt platform, offering a range of
+  A basic agent designed for the Codebolt platform, offering a range of
   functionalities to enhance interaction with the platform.
 avatarSrc: https://placehold.co/200x200
 avatarFallback: CE

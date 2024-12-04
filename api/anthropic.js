@@ -1,5 +1,6 @@
 const { Anthropic } = require("@anthropic-ai/sdk");
 const { anthropicDefaultModelId, anthropicModels } = require("../shared/api");
+const { send_message_to_llm } = require("../utils/codebolt-helper");
 
 class AnthropicHandler {
     constructor(options) {
@@ -14,7 +15,8 @@ class AnthropicHandler {
         console.log("using anthropic")
         // console.log(systemPrompt, messages, tools)
         let createParams = {
-            model: modelId,
+            full:true,
+            model: "",
             max_tokens: 0, //this.getModel().info.maxTokens,
             system: [{ text: systemPrompt, type: "text" }],
             messages,
@@ -28,12 +30,10 @@ class AnthropicHandler {
     }
 
     getModel() {
-
-        const modelId = this.options.apiModelId;
-        if (modelId && modelId in anthropicModels) {
-            return { id: modelId, info: anthropicModels[modelId] };
-        }
-        return { id: anthropicDefaultModelId, info: anthropicModels[anthropicDefaultModelId] };
+        return {
+            id: this.options.openAiModelId ?? "",
+            info: {}, // Assuming a default structure since ModelInfo is not used
+        };
     }
 }
 
