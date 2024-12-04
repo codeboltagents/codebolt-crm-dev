@@ -1,4 +1,4 @@
-const { ClaudeMessage } = require("./ExtensionMessage");
+// const { ClaudeMessage } = require("./ExtensionMessage");
 
 /**
  * Combines API request start and finish messages in an array of ClaudeMessages.
