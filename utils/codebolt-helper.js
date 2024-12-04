@@ -2,6 +2,8 @@ const codebolt = require('@codebolt/codeboltjs').default
 let projectPath;
 const fs = require('fs').promises;
 const path = require('path');
+const fs = require('fs').promises;
+const path = require('path');
 /**
  * Sends a message to the user interface.
  * @param {string} message - The message to be sent to the UI.
@@ -82,7 +84,7 @@ async function ask_question(question, type) {
     }
     function setSecondaryButtonText(text) {
         if (text === undefined) {
-            buttons.splice(1, 1); // Remove the second button from the array
+           
         }
         else {
             buttons[1].value = text
@@ -100,6 +102,8 @@ async function ask_question(question, type) {
             setSecondaryButtonText("Start New Task")
             break
         case "followup":
+            setPrimaryButtonText(undefined)
+            setSecondaryButtonText(undefined)
             setPrimaryButtonText(undefined)
             setSecondaryButtonText(undefined)
             break
@@ -233,6 +237,11 @@ async function ask_question(question, type) {
     const response = await codebolt.chat.sendConfirmationRequest(question, buttons, true);
     // console.log(message.userMessage);
     return response
+    } catch (error) {
+        
+    }
+  
+    
 
 }
 function formatAIMessage(completion) {
