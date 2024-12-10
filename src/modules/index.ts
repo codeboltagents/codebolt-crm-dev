@@ -5,7 +5,7 @@ const path = require('path');
 
 
 
-function getModuleDetailByName(moduleName) {
+export const  getModuleDetailByName=(moduleName)=> {
   const modules = {
     frontend: ` - README.md
   - index.html
@@ -577,36 +577,8 @@ function getModuleDetailByName(moduleName) {
   }
 }
 
-module.exports={
-  getModuleDetailByName
-}
 
 
 
 
-// function generateTreeJson(dirPath) {
-//   const items = fs.readdirSync(dirPath).sort();
-//   const tree = {};
-
-//   items.forEach(item => {
-//     if (item === 'node_modules' || item.startsWith('.')) return;
-//     const itemPath = path.join(dirPath, item);
-
-//     if (fs.statSync(itemPath).isDirectory()) {
-//       tree[item] = generateTreeJson(itemPath);
-//     } else {
-//       tree[item] = null;
-//     }
-//   });
-
-//   return tree;
-// }
-
-// function writeTreeToJson(dirPath, outputFile = 'idurar-erp-crm.json') {
-//   const treeJson = generateTreeJson(dirPath);
-//   fs.writeFileSync(outputFile, JSON.stringify(treeJson, null, 2));
-// }
-
-// // Usage
-// writeTreeToJson('/Users/ravirawat/Desktop/idurar-erp-crm');
 

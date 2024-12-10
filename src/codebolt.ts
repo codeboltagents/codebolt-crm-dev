@@ -5,6 +5,7 @@ import { findLast, findLastIndex, formatContentBlockToMarkdown } from "./utils/a
 import codebolt from '@codebolt/codeboltjs';
 import { getTools, SYSTEM_PROMPT } from "./prompts/prompt"
 import { ask_question, send_message_to_ui } from "./utils/codebolt-helper"
+import { getModuleDetailByName } from "./modules";
 
 let cwd = "";
 
@@ -209,6 +210,10 @@ export class CodeboltDev {
 					return [success, result]
 				}
 
+			case "project_summaries":
+				//@ts-ignore
+				return getModuleDetailByName(toolInput.project_name)
+
 			case "ask_followup_question":
 				return this.askFollowupQuestion(toolInput.question)
 			case "attempt_completion":
@@ -244,15 +249,15 @@ export class CodeboltDev {
 			await this.say("completion_result", resultToSend)
 			// TODO: currently we don't handle if this command fails, it could be useful to let claude know and retry
 			//@ts-ignore
-			let { success, result }= await codebolt.terminal.executeCommand(command, true);
+			let { success, result } = await codebolt.terminal.executeCommand(command, true);
 
 			return [false, ""]
 			// if we received non-empty string, the command was rejected or failed
-			
+
 			resultToSend = ""
 		}
 		return [false, ""]
-		
+
 	}
 
 	async attemptApiRequest() {
@@ -580,7 +585,7 @@ ${this.customInstructions.trim()}
 			//@ts-ignore
 			let { success, result } = await codebolt.fs.listFile(cwd, !isDesktop)
 			details += `\n\n# Current Working Directory (${cwd}) Files\n${result}${isDesktop
-				? "\n(Note: Only top-level contents shown for Desktop by default. Use list_files to explore further if necessary.)"
+				? "\n(Note: Only top-level contents shown for Desktop by default. Use project_summaries to explore further if necessary about frontend or backend.)"
 				: ""
 				}`
 		}
