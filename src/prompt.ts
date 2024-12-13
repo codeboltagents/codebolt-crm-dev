@@ -234,7 +234,6 @@ export const  getTools=(cwd) =>{
             },
         },
     ]
-    ;
     
 }
 
